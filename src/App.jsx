@@ -60,6 +60,8 @@ function parseRecord(r) {
     month:od?od.getMonth():null, monthName:od?MONTHS[od.getMonth()]:"?",
     year:od?od.getFullYear():null, day:od?od.getDate():null,
     weekday:od?od.getDay():null, hour:od?od.getHours():null, daysToClose:dtc,
+    lat:parseFloat(r.latitude)||null,
+    lng:parseFloat(r.longitude)||null,
   };
 }
 
