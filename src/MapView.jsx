@@ -23,20 +23,69 @@ export default function MapView({ data }) {
   const [colorBy, setColorBy] = useState("status");
   const [hovered, setHovered] = useState(null);
 
+  // DEBUG: inspect first record to see what fields exist
+  const debugInfo = useMemo(() => {
+    if (!data || data.length === 0) return "No data passed to MapView";
+    const first = data[0];
+    const keys = Object.keys(first);
+    const latVal = first.lat;
+    const lngVal = first.lng;
+    const latitudeVal = first.latitude;
+    const longitudeVal = first.longitude;
+    return JSON.stringify({
+      totalRecords: data.length,
+      sampleKeys: keys.slice(0, 10),
+      "first.lat": latVal,
+      "first.lng": lngVal,
+      "first.latitude": latitudeVal,
+      "first.longitude": longitudeVal,
+      "typeof first.lat": typeof latVal,
+      "typeof first.lng": typeof lngVal,
+    }, null, 2);
+  }, [data]);
+
   const points = useMemo(() => {
     const valid = [];
+    let skippedNoValue = 0;
+    let skippedNaN = 0;
+    let skippedBounds = 0;
+
     for (let i = 0; i < data.length && valid.length < 2000; i++) {
       const d = data[i];
-      // Handle both parsed (d.lat) and raw CSV (d.latitude) field names
-      const lat = typeof d.lat === "number" ? d.lat : parseFloat(d.lat || d.latitude);
-      const lng = typeof d.lng === "number" ? d.lng : parseFloat(d.lng || d.longitude);
-      if (!lat || !lng || isNaN(lat) || isNaN(lng)) continue;
-      if (lat < BOUNDS.minLat || lat > BOUNDS.maxLat) continue;
-      if (lng < BOUNDS.minLng || lng > BOUNDS.maxLng) continue;
+
+      // Try every possible field name
+      let rawLat = d.lat !== undefined ? d.lat : d.latitude;
+      let rawLng = d.lng !== undefined ? d.lng : d.longitude;
+
+      if (rawLat === null || rawLat === undefined || rawLat === "") {
+        skippedNoValue++;
+        continue;
+      }
+      if (rawLng === null || rawLng === undefined || rawLng === "") {
+        skippedNoValue++;
+        continue;
+      }
+
+      const lat = typeof rawLat === "number" ? rawLat : parseFloat(String(rawLat).trim());
+      const lng = typeof rawLng === "number" ? rawLng : parseFloat(String(rawLng).trim());
+
+      if (isNaN(lat) || isNaN(lng)) {
+        skippedNaN++;
+        continue;
+      }
+
+      if (lat < BOUNDS.minLat || lat > BOUNDS.maxLat || lng < BOUNDS.minLng || lng > BOUNDS.maxLng) {
+        skippedBounds++;
+        continue;
+      }
+
       const x = ((lng - BOUNDS.minLng) / (BOUNDS.maxLng - BOUNDS.minLng)) * W;
       const y = H - ((lat - BOUNDS.minLat) / (BOUNDS.maxLat - BOUNDS.minLat)) * H;
       valid.push({ ...d, lat, lng, x, y });
     }
+
+    // Store debug stats
+    valid._debug = { skippedNoValue, skippedNaN, skippedBounds, total: data.length };
     return valid;
   }, [data]);
 
@@ -49,15 +98,32 @@ export default function MapView({ data }) {
     ? Object.entries(STATUS_COLORS)
     : Object.entries(TOPIC_COLORS).slice(0, 8);
 
+  const dbg = points._debug || {};
+
   return (
     <div>
+      {/* DEBUG BOX - remove after fixing */}
+      <div style={{
+        background: "#1a0505", border: "1px solid #ef4444", borderRadius: 8,
+        padding: 12, marginBottom: 14, fontSize: 11, fontFamily: "monospace",
+        color: "#fca5a5", whiteSpace: "pre-wrap", maxHeight: 200, overflow: "auto",
+      }}>
+        <b>DEBUG (remove after fixing):</b>{"\n"}
+        Valid points: {points.length}{"\n"}
+        Skipped (no value): {dbg.skippedNoValue}{"\n"}
+        Skipped (NaN): {dbg.skippedNaN}{"\n"}
+        Skipped (out of bounds): {dbg.skippedBounds}{"\n"}
+        Total data: {dbg.total}{"\n"}
+        ---{"\n"}
+        {debugInfo}
+      </div>
+
       <div style={{
         display: "flex", justifyContent: "space-between", alignItems: "center",
         marginBottom: 14, flexWrap: "wrap", gap: 12,
       }}>
         <div style={{ fontSize: 12, color: P.muted, fontFamily: "'Geist Mono', monospace" }}>
           {points.length.toLocaleString()} locations
-          {data.length > 2000 ? " (showing 2,000)" : ""}
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {["status", "topic"].map(opt => (
@@ -102,6 +168,11 @@ export default function MapView({ data }) {
               />
             );
           })}
+          {points.length === 0 && (
+            <text x={W / 2} y={H / 2} textAnchor="middle" fill="#94a3b8" fontSize={16}>
+              No locations to display — check debug info above
+            </text>
+          )}
         </svg>
       </div>
 
