@@ -33,7 +33,7 @@ function parseCSVLine(line) {
   result.push(current); return result;
 }
 function parseCSV(text) {
-  const lines = text.trim().split("\n"); if (lines.length<2) return [];
+  const lines = text.trim().replace(/\r/g, "").split("\n"); if (lines.length<2) return [];
   const headers = parseCSVLine(lines[0]);
   return lines.slice(1).map(l => { const v=parseCSVLine(l); const o={}; headers.forEach((h,i)=>{o[h]=v[i]||""}); return o; });
 }
