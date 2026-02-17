@@ -20,7 +20,7 @@ const P = {
   red: "#ef4444", green: "#22c55e", purple: "#a78bfa",
   pink: "#ec4899", text: "#e2e8f0", muted: "#94a3b8", dim: "#475569",
 };
-const COLORS = ["#38bdf8","#f59e0b","#22c55e","#ef4444","#a78bfa","#ec4899","#06b6d4","#84cc16","#f97316","#6366f1","#14b8a6","#e879f9","#fbbf24","#2dd4bf","#fb923c"];
+const PIE_COLORS = ["#38bdf8","#f59e0b","#22c55e","#ef4444","#a78bfa","#ec4899","#06b6d4","#84cc16","#f97316","#6366f1","#14b8a6","#e879f9","#fbbf24","#2dd4bf","#fb923c"];
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function parseCSVLine(line) {
@@ -28,14 +28,14 @@ function parseCSVLine(line) {
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
     if (inQ) { if (ch === '"') { if (i+1<line.length && line[i+1]==='"') { current+='"'; i++; } else inQ=false; } else current+=ch; }
-    else { if (ch==='"') inQ=true; else if (ch===',') { result.push(current); current=""; } else current+=ch; }
+    else { if (ch==='"') inQ=true; else if (ch===',') { result.push(current.trim()); current=""; } else current+=ch; }
   }
-  result.push(current); return result;
+  result.push(current.trim()); return result;
 }
 function parseCSV(text) {
   const lines = text.trim().replace(/\r/g, "").split("\n"); if (lines.length<2) return [];
   const headers = parseCSVLine(lines[0]);
-  return lines.slice(1).map(l => { const v=parseCSVLine(l); const o={}; headers.forEach((h,i)=>{o[h]=v[i]||""}); return o; });
+  return lines.slice(1).map(l => { const v=parseCSVLine(l); const o={}; headers.forEach((h,i)=>{o[h.trim()]=v[i]||""}); return o; });
 }
 async function fetchFromAPI(onProgress) {
   let all=[], offset=0, total=Infinity;
@@ -60,8 +60,8 @@ function parseRecord(r) {
     month:od?od.getMonth():null, monthName:od?MONTHS[od.getMonth()]:"?",
     year:od?od.getFullYear():null, day:od?od.getDate():null,
     weekday:od?od.getDay():null, hour:od?od.getHours():null, daysToClose:dtc,
-    lat:parseFloat(r.latitude)||null,
-    lng:parseFloat(r.longitude)||null,
+    lat: parseFloat(r.latitude) || null,
+    lng: parseFloat(r.longitude) || null,
   };
 }
 
@@ -191,25 +191,25 @@ export default function App() {
             <Area type="monotone" dataKey="requests" stroke={P.accent} fill="url(#ag)" strokeWidth={2.5} name="Total"/><Area type="monotone" dataKey="overdue" stroke={P.red} fill="none" strokeWidth={1.5} strokeDasharray="4 4" name="Overdue"/>
           </AreaChart></ResponsiveContainer>
         </Card>
-        <Card title="By Neighborhood"><ResponsiveContainer width="100%" height={360}><BarChart data={byNeighborhood} layout="vertical" margin={{left:10}}><CartesianGrid strokeDasharray="3 3" stroke={P.border}/><XAxis type="number" stroke={P.dim} fontSize={11}/><YAxis type="category" dataKey="name" stroke={P.dim} fontSize={11} width={100}/><Tooltip content={<Tip/>}/><Bar dataKey="value" name="Requests" radius={[0,4,4,0]}>{byNeighborhood.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} fillOpacity={0.85}/>)}</Bar></BarChart></ResponsiveContainer></Card>
-        <Card title="Report Source"><ResponsiveContainer width="100%" height={360}><PieChart><Pie data={bySource} cx="50%" cy="50%" outerRadius={130} innerRadius={65} dataKey="value" paddingAngle={3} stroke="none">{bySource.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Pie><Tooltip content={<Tip/>}/><Legend iconType="circle" wrapperStyle={{fontSize:12,color:P.muted}}/></PieChart></ResponsiveContainer></Card>
+        <Card title="By Neighborhood"><ResponsiveContainer width="100%" height={360}><BarChart data={byNeighborhood} layout="vertical" margin={{left:10}}><CartesianGrid strokeDasharray="3 3" stroke={P.border}/><XAxis type="number" stroke={P.dim} fontSize={11}/><YAxis type="category" dataKey="name" stroke={P.dim} fontSize={11} width={100}/><Tooltip content={<Tip/>}/><Bar dataKey="value" name="Requests" radius={[0,4,4,0]} fill={P.accent} fillOpacity={0.85}/></BarChart></ResponsiveContainer></Card>
+        <Card title="Report Source"><ResponsiveContainer width="100%" height={360}><PieChart><Pie data={bySource} cx="50%" cy="50%" outerRadius={130} innerRadius={65} dataKey="value" paddingAngle={3} stroke="none">{bySource.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip content={<Tip/>}/><Legend iconType="circle" wrapperStyle={{fontSize:12,color:P.muted}}/></PieChart></ResponsiveContainer></Card>
       </div>)}
 
       {tab==="topics"&&(<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(400px,1fr))",gap:18}}>
-        <Card title="Top Case Topics" span={2}><ResponsiveContainer width="100%" height={340}><BarChart data={byTopic} margin={{bottom:80}}><CartesianGrid strokeDasharray="3 3" stroke={P.border}/><XAxis dataKey="name" stroke={P.dim} fontSize={10} angle={-40} textAnchor="end" interval={0}/><YAxis stroke={P.dim} fontSize={11}/><Tooltip content={<Tip/>}/><Bar dataKey="value" name="Cases" radius={[4,4,0,0]}>{byTopic.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Bar></BarChart></ResponsiveContainer></Card>
-        <Card title="By Department"><ResponsiveContainer width="100%" height={320}><BarChart data={byDepartment} layout="vertical" margin={{left:10}}><CartesianGrid strokeDasharray="3 3" stroke={P.border}/><XAxis type="number" stroke={P.dim} fontSize={11}/><YAxis type="category" dataKey="name" stroke={P.dim} fontSize={10} width={150}/><Tooltip content={<Tip/>}/><Bar dataKey="value" name="Cases" radius={[0,4,4,0]}>{byDepartment.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} fillOpacity={0.85}/>)}</Bar></BarChart></ResponsiveContainer></Card>
-        <Card title="Case Status"><div style={{display:"flex",justifyContent:"center",height:320}}><ResponsiveContainer width="100%" height={300}><PieChart><Pie data={statusCounts} cx="50%" cy="50%" outerRadius={110} innerRadius={55} dataKey="value" stroke="none" paddingAngle={4}>{statusCounts.map((d,i)=><Cell key={i} fill={d.name==="Closed"?P.green:d.name==="In progress"?P.warm:d.name==="Open"?P.accent:COLORS[i]}/>)}</Pie><Tooltip content={<Tip/>}/><Legend iconType="circle" wrapperStyle={{fontSize:12}}/></PieChart></ResponsiveContainer></div></Card>
+        <Card title="Top Case Topics" span={2}><ResponsiveContainer width="100%" height={340}><BarChart data={byTopic} margin={{bottom:80}}><CartesianGrid strokeDasharray="3 3" stroke={P.border}/><XAxis dataKey="name" stroke={P.dim} fontSize={10} angle={-40} textAnchor="end" interval={0}/><YAxis stroke={P.dim} fontSize={11}/><Tooltip content={<Tip/>}/><Bar dataKey="value" name="Cases" radius={[4,4,0,0]} fill={P.accent} fillOpacity={0.85}/></BarChart></ResponsiveContainer></Card>
+        <Card title="By Department"><ResponsiveContainer width="100%" height={320}><BarChart data={byDepartment} layout="vertical" margin={{left:10}}><CartesianGrid strokeDasharray="3 3" stroke={P.border}/><XAxis type="number" stroke={P.dim} fontSize={11}/><YAxis type="category" dataKey="name" stroke={P.dim} fontSize={10} width={150}/><Tooltip content={<Tip/>}/><Bar dataKey="value" name="Cases" radius={[0,4,4,0]} fill={P.accent} fillOpacity={0.85}/></BarChart></ResponsiveContainer></Card>
+        <Card title="Case Status"><div style={{display:"flex",justifyContent:"center",height:320}}><ResponsiveContainer width="100%" height={300}><PieChart><Pie data={statusCounts} cx="50%" cy="50%" outerRadius={110} innerRadius={55} dataKey="value" stroke="none" paddingAngle={4}>{statusCounts.map((d,i)=><Cell key={i} fill={d.name==="Closed"?P.green:d.name==="In progress"?P.warm:d.name==="Open"?P.accent:PIE_COLORS[i]}/>)}</Pie><Tooltip content={<Tip/>}/><Legend iconType="circle" wrapperStyle={{fontSize:12}}/></PieChart></ResponsiveContainer></div></Card>
       </div>)}
 
       {tab==="performance"&&(<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(400px,1fr))",gap:18}}>
-        <Card title="Avg Resolution by Topic (Days)" span={2}><ResponsiveContainer width="100%" height={360}><BarChart data={resolutionByTopic} layout="vertical" margin={{left:20}}><CartesianGrid strokeDasharray="3 3" stroke={P.border}/><XAxis type="number" stroke={P.dim} fontSize={11} unit="d"/><YAxis type="category" dataKey="name" stroke={P.dim} fontSize={10} width={160}/><Tooltip content={<Tip/>}/><Bar dataKey="avg" name="Avg Days" radius={[0,6,6,0]}>{resolutionByTopic.map((d,i)=><Cell key={i} fill={d.avg>10?P.red:d.avg>5?P.warm:P.green} fillOpacity={0.85}/>)}</Bar></BarChart></ResponsiveContainer></Card>
+        <Card title="Avg Resolution by Topic (Days)" span={2}><ResponsiveContainer width="100%" height={360}><BarChart data={resolutionByTopic} layout="vertical" margin={{left:20}}><CartesianGrid strokeDasharray="3 3" stroke={P.border}/><XAxis type="number" stroke={P.dim} fontSize={11} unit="d"/><YAxis type="category" dataKey="name" stroke={P.dim} fontSize={10} width={160}/><Tooltip content={<Tip/>}/><Bar dataKey="avg" name="Avg Days" radius={[0,6,6,0]} fill={P.warm} fillOpacity={0.85}/></BarChart></ResponsiveContainer></Card>
         <Card title="Monthly Closure Rate"><ResponsiveContainer width="100%" height={280}><LineChart data={monthlyVolume.map(d=>({...d,rate:d.requests>0?+((d.closed/d.requests)*100).toFixed(1):0}))}><CartesianGrid strokeDasharray="3 3" stroke={P.border}/><XAxis dataKey="month" stroke={P.dim} fontSize={12}/><YAxis stroke={P.dim} fontSize={12} domain={[0,100]} unit="%"/><Tooltip content={<Tip/>}/><Line type="monotone" dataKey="rate" stroke={P.green} strokeWidth={2.5} dot={{fill:P.green,r:4}} name="Closure %"/></LineChart></ResponsiveContainer></Card>
-        <Card title="On-Time vs Overdue"><div style={{display:"flex",justifyContent:"center",height:280}}><ResponsiveContainer width="100%" height={260}><PieChart><Pie data={onTimeCounts} cx="50%" cy="50%" outerRadius={100} innerRadius={55} dataKey="value" stroke="none" paddingAngle={4}><Cell fill={P.accent}/><Cell fill={P.warm}/></Pie><Tooltip content={<Tip/>}/><Legend iconType="circle" wrapperStyle={{fontSize:12}}/></PieChart></ResponsiveContainer></div></Card>
+        <Card title="On-Time vs Overdue"><div style={{display:"flex",justifyContent:"center",height:280}}><ResponsiveContainer width="100%" height={260}><PieChart><Pie data={onTimeCounts} cx="50%" cy="50%" outerRadius={100} innerRadius={55} dataKey="value" stroke="none" paddingAngle={4}><Cell fill={P.green}/><Cell fill={P.red}/></Pie><Tooltip content={<Tip/>}/><Legend iconType="circle" wrapperStyle={{fontSize:12}}/></PieChart></ResponsiveContainer></div></Card>
       </div>)}
 
       {tab==="patterns"&&(<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(400px,1fr))",gap:18}}>
-        <Card title="Requests by Hour of Day" span={2}><ResponsiveContainer width="100%" height={280}><BarChart data={hourlyDist}><CartesianGrid strokeDasharray="3 3" stroke={P.border}/><XAxis dataKey="hour" stroke={P.dim} fontSize={10} interval={1}/><YAxis stroke={P.dim} fontSize={11}/><Tooltip content={<Tip/>}/><Bar dataKey="count" name="Requests" radius={[3,3,0,0]}>{hourlyDist.map((_,i)=><Cell key={i} fill={i>=8&&i<=17?P.accent:P.purple} fillOpacity={0.8}/>)}</Bar></BarChart></ResponsiveContainer></Card>
-        <Card title="Requests by Day of Week"><ResponsiveContainer width="100%" height={280}><BarChart data={weekdayDist}><CartesianGrid strokeDasharray="3 3" stroke={P.border}/><XAxis dataKey="day" stroke={P.dim} fontSize={12}/><YAxis stroke={P.dim} fontSize={11}/><Tooltip content={<Tip/>}/><Bar dataKey="count" name="Requests" radius={[4,4,0,0]}>{weekdayDist.map((_,i)=><Cell key={i} fill={i===0||i===6?P.warm:P.accent} fillOpacity={0.85}/>)}</Bar></BarChart></ResponsiveContainer></Card>
+        <Card title="Requests by Hour of Day" span={2}><ResponsiveContainer width="100%" height={280}><BarChart data={hourlyDist}><CartesianGrid strokeDasharray="3 3" stroke={P.border}/><XAxis dataKey="hour" stroke={P.dim} fontSize={10} interval={1}/><YAxis stroke={P.dim} fontSize={11}/><Tooltip content={<Tip/>}/><Bar dataKey="count" name="Requests" radius={[3,3,0,0]} fill={P.accent} fillOpacity={0.8}/></BarChart></ResponsiveContainer></Card>
+        <Card title="Requests by Day of Week"><ResponsiveContainer width="100%" height={280}><BarChart data={weekdayDist}><CartesianGrid strokeDasharray="3 3" stroke={P.border}/><XAxis dataKey="day" stroke={P.dim} fontSize={12}/><YAxis stroke={P.dim} fontSize={11}/><Tooltip content={<Tip/>}/><Bar dataKey="count" name="Requests" radius={[4,4,0,0]} fill={P.accent} fillOpacity={0.85}/></BarChart></ResponsiveContainer></Card>
         <Card title="Monthly Overdue Cases"><ResponsiveContainer width="100%" height={280}><AreaChart data={monthlyVolume}><defs><linearGradient id="rg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={P.red} stopOpacity={0.3}/><stop offset="100%" stopColor={P.red} stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke={P.border}/><XAxis dataKey="month" stroke={P.dim} fontSize={12}/><YAxis stroke={P.dim} fontSize={11}/><Tooltip content={<Tip/>}/><Area type="monotone" dataKey="overdue" stroke={P.red} fill="url(#rg)" strokeWidth={2} name="Overdue"/></AreaChart></ResponsiveContainer></Card>
       </div>)}
 
